@@ -17,20 +17,6 @@ if (!GENEMI_API_KEY) {
 const genAI = new GoogleGenerativeAI(GENEMI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// Test function to check Gemini API connection
-async function testGeminiConnection() {
-    try {
-        const testResponse = await model.generateContent("Hello! Just a test to check connection.");
-        const responseText = testResponse.response.candidates[0].content.parts[0].text.trim();
-        console.log("Gemini API connected successfully:", responseText);
-    } catch (error) {
-        console.error("Failed to connect to Gemini API:", error.message);
-    }
-}
-
-// Call the test function on server start
-// testGeminiConnection();
-
 // Define initial context and personality
 let botContext = `
 You are LUNA, a chatbot for the YouTube channel playKashyap. Your goal is to create a friendly, engaging, and enjoyable atmosphere, using jokes occasionally and avoiding topics related to politics or religion. 
@@ -50,7 +36,6 @@ Streamer Info:
 - Favorite color: sky blue
 `;
 
-// Define an array to store messages if you want to keep track of chat history
 const messages = [{ role: "system", content: botContext }];
 
 app.use(express.json({ extended: true, limit: "1mb" }));
@@ -62,6 +47,8 @@ app.all("/", async (req, res) => {
 app.get("/gpt/:text", async (req, res) => {
     const userText = req.params.text;
 
+    console.log("User:", userText);
+
     try {
         // Add user's message to context
         messages.push({ role: "user", content: userText });
@@ -70,23 +57,21 @@ app.get("/gpt/:text", async (req, res) => {
         const maxHistory = 100;
         if (messages.length > maxHistory) messages.splice(1, 1); // Keep the initial system message
 
-        // Make API call to Gemini model
-        const response = await model.generateContent(botContext + `\n\nUser: ${userText}\nLUNA: `);
+        // Make API call to Gemini model with user input and context
+        const response = await model.generateContent(botContext + `\n\nUser: ${userText}\nLUNA: `)  // Include the user query in the prompt);
 
         if (response?.response?.candidates) {
             const botResponse = response.response.candidates[0].content.parts[0].text.trim();
 
-            // let botResponse = response.data.choices[0].text.trim();
-
-            // Ensure the response is under 200 characters
-            // if (botResponse.length > 200) {
-            //     botResponse = botResponse.substring(0, 200) + "...";
-            // }
+            // Ensure the response is under 200 characters (optional)
+            if (botResponse.length > 200) {
+                botResponse = botResponse.substring(0, 200) + "...";
+            }
 
             // Save the bot response in message history
             messages.push({ role: "assistant", content: botResponse });
 
-            res.send(botResponse);
+            res.send(botResponse);  // Return the generated response to the user
         } else {
             res.status(500).send("Failed to generate a response. Try again later.");
         }
