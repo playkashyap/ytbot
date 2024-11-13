@@ -47,11 +47,12 @@ app.all("/", async (req, res) => {
 app.get("/gpt/:text", async (req, res) => {
     const userText = req.params.text;
 
-    console.log("User:", userText);
+    // console.log("User:", userText);
 
     try {
         // Add user's message to context
         messages.push({ role: "user", content: userText });
+        // console.log(botContext + `\n\nUser: ${userText}\nLUNA: `);
 
         // Truncate message history if it exceeds a certain length
         const maxHistory = 100;
