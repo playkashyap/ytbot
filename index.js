@@ -1,113 +1,94 @@
 const express = require("express");
-const fs = require("fs");
-const { promisify } = require("util");
-const { Configuration, OpenAIApi } = require("openai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const dotenv = require("dotenv");
 
 dotenv.config();
 
-const readFile = promisify(fs.readFile);
 const app = express();
 
-const GPT_MODE = process.env.GPT_MODE || "CHAT";
-const HISTORY_LENGTH = Number(process.env.HISTORY_LENGTH) || 100;
 const PORT = Number(process.env.PORT) || 3000;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GENEMI_API_KEY = process.env.API_KEY;
 
-if (!OPENAI_API_KEY) {
-    console.error("OpenAI API Key is missing. Please set it in .env file.");
+if (!GENEMI_API_KEY) {
+    console.error("Genemi API Key is missing. Please set it in .env file.");
     process.exit(1);
 }
 
-let file_context = "You are a helpful YouTube Chatbot.";
-const messages = [{ role: "system", content: file_context }];
+const genAI = new GoogleGenerativeAI(GENEMI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-console.log("GPT_MODE:", GPT_MODE);
-console.log("History length:", HISTORY_LENGTH);
-console.log("OpenAI API Key:", OPENAI_API_KEY ? "Loaded" : "Not loaded");
-console.log("Port:", PORT);
-
-app.use(express.json({ extended: true, limit: "1mb" }));
-
-app.all("/", (req, res) => {
-    res.send(
-        "Yo! Sup, I'm GPTChatBot developed by Shubham Kashyap, you can call me LUNA. I'm here to help you with your queries. Just ask me anything!"
-    );
-});
-
-async function initializeContext() {
+// Test function to check Gemini API connection
+async function testGeminiConnection() {
     try {
-        const context = await readFile("./file_context.txt", "utf8");
-        if (GPT_MODE === "CHAT") {
-            console.log("Loaded context file as system message for the agent.");
-            messages[0].content = context;
-        } else {
-            console.log("Loaded context file for prompt mode.");
-            file_context = context;
-        }
-    } catch (err) {
-        console.warn("Context file not found or couldn't be read. Using default context.");
+        const testResponse = await model.generateContent("Hello! Just a test to check connection.");
+        const responseText = testResponse.response.candidates[0].content.parts[0].text.trim();
+        console.log("Gemini API connected successfully:", responseText);
+    } catch (error) {
+        console.error("Failed to connect to Gemini API:", error.message);
     }
 }
 
+// Call the test function on server start
+// testGeminiConnection();
+
+// Define initial context and personality
+let botContext = `
+You are LUNA, a chatbot for the YouTube channel playKashyap. Your goal is to create a friendly, engaging, and enjoyable atmosphere, using jokes occasionally and avoiding topics related to politics or religion. 
+- LUNA stands for Logical User Navigation Assistant.
+- You can understand and respond in multiple languages, including Hindi.
+- Refer to yourself as an independent viewer, part of the community, and respond without always mentioning the streamer.
+- Be nice to everyone, respectful, and answer in under 200 characters.
+- Don't start responses with "!" or "/".
+
+Streamer Info:
+- Name: Kashyap (he/him), age 23, height 5'11", favorite color: sky blue
+- Favorite game: Valorant, favorite skins: Kuronami, amount spent: 80K+
+- Stream timings: 8:00 PM IST daily
+- Streamer socials: YouTube (@playkashyap), Instagram (@playkashyap), Discord (invite: ZPf5HT8)
+- PC Specs: Intel i5 13600K, RTX 4070 Super, 32GB RAM, dual monitors (Samsung Odyssey G4 and Dell 24")
+- Streaming gear: Logitech G733 Lightspeed headphones, Moano AU A04 Plus mic, MX BRIO 4k webcam, Logitech G304 Lightspeed mouse
+- Favorite color: sky blue
+`;
+
+// Define an array to store messages if you want to keep track of chat history
+const messages = [{ role: "system", content: botContext }];
+
+app.use(express.json({ extended: true, limit: "1mb" }));
+
+app.all("/", async (req, res) => {
+    res.send("Hello! I'm LUNA, playKashyap's YouTube chatbot, here to make your experience fun. Ask me anything!");
+});
+
 app.get("/gpt/:text", async (req, res) => {
-    const text = req.params.text;
-    const configuration = new Configuration({ apiKey: OPENAI_API_KEY });
-    const openai = new OpenAIApi(configuration);
+    const userText = req.params.text;
 
     try {
-        if (GPT_MODE === "CHAT") {
-            messages.push({ role: "user", content: text });
+        // Add user's message to context
+        messages.push({ role: "user", content: userText });
 
-            if (messages.length > HISTORY_LENGTH * 2 + 1) {
-                messages.splice(1, 2);
-            }
+        // Truncate message history if it exceeds a certain length
+        const maxHistory = 100;
+        if (messages.length > maxHistory) messages.splice(1, 1); // Keep the initial system message
 
-            const response = await openai.createChatCompletion({
-                model: "gpt-3.5-turbo",
-                messages: messages,
-                temperature: 0.5,
-                max_tokens: 128,
-                top_p: 1,
-                frequency_penalty: 0,
-                presence_penalty: 0,
-            });
+        // Make API call to Gemini model
+        const response = await model.generateContent(botContext + `\n\nUser: ${userText}\nLUNA: `);
 
-            if (response.data.choices) {
-                let agent_response = response.data.choices[0].message.content;
-                messages.push({ role: "assistant", content: agent_response });
+        if (response?.response?.candidates) {
+            const botResponse = response.response.candidates[0].content.parts[0].text.trim();
 
-                if (agent_response.length > 200) {
-                    agent_response = agent_response.substring(0, 200);
-                }
+            // let botResponse = response.data.choices[0].text.trim();
 
-                res.send(agent_response);
-            } else {
-                res.status(500).send("Failed to generate a response. Try again later.");
-            }
+            // Ensure the response is under 200 characters
+            // if (botResponse.length > 200) {
+            //     botResponse = botResponse.substring(0, 200) + "...";
+            // }
+
+            // Save the bot response in message history
+            messages.push({ role: "assistant", content: botResponse });
+
+            res.send(botResponse);
         } else {
-            const prompt = `${file_context}\n\nQ:${text}\nA:`;
-            const response = await openai.createCompletion({
-                model: "text-davinci-003",
-                prompt: prompt,
-                temperature: 0.5,
-                max_tokens: 128,
-                top_p: 1,
-                frequency_penalty: 0,
-                presence_penalty: 0,
-            });
-
-            if (response.data.choices) {
-                let agent_response = response.data.choices[0].text;
-
-                if (agent_response.length > 200) {
-                    agent_response = agent_response.substring(0, 200);
-                }
-
-                res.send(agent_response.trim());
-            } else {
-                res.status(500).send("Failed to generate a response. Try again later.");
-            }
+            res.status(500).send("Failed to generate a response. Try again later.");
         }
     } catch (error) {
         console.error("Error:", error);
@@ -115,8 +96,6 @@ app.get("/gpt/:text", async (req, res) => {
     }
 });
 
-initializeContext().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-    });
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
