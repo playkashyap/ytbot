@@ -47,7 +47,7 @@ app.all("/", async (req, res) => {
 app.get("/gpt/:text", async (req, res) => {
     const userText = req.params.text;
 
-    // console.log("User:", userText);
+    console.log("User:", userText);
 
     try {
         // Add user's message to context
