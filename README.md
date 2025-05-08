@@ -12,8 +12,6 @@ Start by logging into your Github account and forking this repository. <strong>D
 
 Open the file named `file_context.txt` and fill it with background information for ChatGPT. This information enhances the bot's responses. Feel free to provide any details you think would be helpful for training your bot.
 
-(I made This Template for my friend [FleXGuy](https://www.youtube.com/channel/UCjx7TNunoyeub4E2zhBky2Q) ..Feel free to add or remove any info from the template)
-
 ---
 
 ## 3. Create an OpenAI account
@@ -24,7 +22,7 @@ Visit [OpenAI's platform](https://platform.openai.com) and create an account. In
 
 ## 4. Get your OpenAI Secure Key
 
-In your OpenAI account, navigate to the API keys section and generate a new secret key. Keep this key safe, as it will be used to authorize your bot with OpenAI. Treat it like the key to your wallet.
+In your Gemini account (as it provides free now) , navigate to the API keys section and generate a new secret key. Keep this key safe, as it will be used to authorize your bot with OpenAI. Treat it like the key to your wallet.
 
 ---
 
@@ -50,7 +48,7 @@ Choose between two values:
 
 This variable only works when GPT_MODE is set to "CHAT". Enter a number to define how many bot-user conversations will be saved and sent along with the most recent user message. This allows ChatGPT to remember context and engage in conversations.
 
-### OPENAI_API_KEY
+### Gemenie API key
 
 Paste your OpenAI Secure Key here.
 
@@ -73,20 +71,3 @@ Go to your Nightbot commands page and add a new command. Enter the following mes
 ```bash
 $(urlfetch https://your-Render-url.app/gpt/"$(user):$(querystring)")
 ```
-
-Replace "your-Render-url.app" with the API link you copied earlier.
-
-## Contributing
-
-as always Contributions to this project are welcome! If you have any suggestions or improvements, feel free to open an issue or submit a pull request.
-
-## Contact
-
-If you have any questions or inquiries, please feel free to get in touch:
-
-- Email: avinash.warale@yandex.com
-- Discord: [@p4rz1v4l26](https://discordapp.com/users/896411007797325824/)
-
-or you can join
-
-- [Discord server](https://discord.gg/vFWB2KGcH9)
